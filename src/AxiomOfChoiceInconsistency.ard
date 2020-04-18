@@ -1,0 +1,85 @@
+\import HLevel
+\import Logic
+\import Equiv.Univalence
+\import Equiv
+\import Paths
+\open Equiv
+\import Two
+\open Two
+\import Sigma
+
+-- | This module shows conflict of the univalence axiom and the axiom of choice in homotopy 1-types
+\func AC-cartesian : \Type =>
+  \Pi (X : \Type 2 2) (Y : X -> \Type 3 2) -> Equiv {\Pi (x : X) -> TruncP (Y x)} {TruncP (\Pi (x : X) -> Y x)}
+
+\func AC-contradiction (axiomOfChoice : (AC-cartesian : \Type 3 2)) : Empty => unwrap-bottom axiomOfChoice
+  \where {
+    \func X : \Type => \Sigma (A : \Type 1 0) (TruncP (Two = {\Set1} A))
+
+    \func x0 : X => (Two, inP idp)
+
+    \func X-is-not-a-set : (x0 = x0) = (Two = Two) =>
+      stripSigmas {\lam a => TruncP (Two = a)} x0 x0 (truncationIsContractible idp) (truncationIsContractible idp)
+      \where {
+        \func truncationIsContractible {A : \Type} (a : A) : Contr (TruncP A) =>
+          Contr.make (inP a) (\lam a' => TruncP.levelProp (inP a) a')
+      }
+
+    \func contradict (p : X = One) : Empty => derive-contradiction (so-two-is-prop p zero Two.one)
+      \where {
+        \func x0-contr (p : X = One) : (Contr (x0 = x0)) => isProp=>HLevel_-2+1 X (X-is-prop p) x0 x0
+
+        \func X-is-prop (p : X = One) : (isProp X) => transport (\lam A => isProp A) (inv p) one-is-prop
+
+        \func contractibles-are-ones {A : \Type} (a : A) (p : Contr (a = a)) : Equiv {a = a} {One} =>
+          \new QEquiv (\lam _ => one) (\lam _ => p.center) p.contraction (one-is-prop one)
+
+        \func x0=x0-is-one (p : X = One) : ((x0 = x0) = One) => univalence.sec (contractibles-are-ones x0 (x0-contr p))
+
+        \func one=two (p : X = One) : (One = Two) =>
+          inv (x0=x0-is-one p) *> X-is-not-a-set *> (inv (univalence.sec TwoIsNonTrivial))
+
+        \func so-two-is-prop (p : X = One) : (isProp Two) => transport (\lam A => isProp A) (one=two p) one-is-prop
+
+        \func inequal-transporter (p : Two) : \Type \elim p
+          | zero => One
+          | Two.one => Empty
+
+        \func derive-contradiction (p : zero = Two.one) : Empty => transport (\lam a => inequal-transporter a) p one
+      }
+
+    \func Y (x : X) : \Type => (x0 = x)
+
+    \func Y-is-truncated (x : X) : TruncP (Y x) =>
+      TruncP.map {Two = x.1} {_}
+                 x.2
+                 (\lam (proof : Two = x.1)
+                 => SigmaExt
+                         (\lam A => TruncP (Two = A))
+                         x0
+                         x
+                         proof
+                         (TruncP.levelProp (transport (\lam A => TruncP (Two = A)) proof (inP idp)) (x.2)))
+
+    \func invoke-choice (choice : AC-cartesian) : TruncP (\Pi (x : X) -> Y x) => Map.f {choice X Y} Y-is-truncated
+
+    \func X-propositionnaly-contractible (choice : AC-cartesian) : TruncP (Contr X) =>
+      TruncP.map {_} {Contr X} (invoke-choice choice) (\lam p => Contr.make x0 p)
+
+    \data One | one
+
+    \func Contr-is-HLevel-1 {A : \Type} (x : Contr A) : (Equiv {A} {One}) =>
+      \new QEquiv (\lam _ => one) (\lam _ => x.center) (x.contraction) (oneContr)
+      \where \func oneContr (a : One) : one = a \elim a | one => idp
+
+    \func one-is-prop (a a' : One) : a = a' \elim a, a' | one, one => idp
+
+    \func X-is-propositionally-one (choice : AC-cartesian) : (TruncP (X = One)) =>
+      TruncP.map (X-propositionnaly-contractible choice) (\lam p => univalence.sec (Contr-is-HLevel-1 p))
+
+    \func derive-truncated-bottom (choice : AC-cartesian) : (TruncP Empty) =>
+      TruncP.map (X-is-propositionally-one choice) (\lam p => contradict p)
+
+    \func unwrap-bottom (choice : AC-cartesian) : Empty =>
+      TruncP.remove (\lam x y => absurd x) (derive-truncated-bottom choice)
+  }

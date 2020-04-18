@@ -1,0 +1,103 @@
+\import Equiv
+\open Equiv
+\import Equiv.Univalence
+\import Paths
+\import HLevel
+\import Equiv.Fiber
+\import Function
+
+\data Two : \Type 1 0 | zero | one
+
+\func TwoIsNonTrivial : Equiv {Two} {Two = Two} => \new QEquiv Two->Eq Eq->Two leftInverse rightInverse
+  \where {
+    \func nontrivial:Two->Two (two : Two) : Two \elim two
+      | one => zero
+      | zero => one
+
+    \func nontrivial:Two->Two_is_qEquiv (x : Two) : (nontrivial:Two->Two (nontrivial:Two->Two x) = x) \elim x
+      | one => idp
+      | zero => idp
+
+    \func univalent:Eq_Two_Two : Equiv {Two} {Two} =>
+      \new QEquiv nontrivial:Two->Two nontrivial:Two->Two nontrivial:Two->Two_is_qEquiv nontrivial:Two->Two_is_qEquiv
+
+    \func univalent:Two=Two : (Two = Two) => univalence.sec univalent:Eq_Two_Two
+
+    \func Two->Eq (two : Two) : Two = Two \elim two
+      | zero => idp
+      | one => univalent:Two=Two
+
+    \func Eq->Two (p : (Two = Two)) : Two => Map.f {univalence.f p} zero
+
+    \func happly {A B : \Type} (f g : A -> B) (p : f = g) (a : A) : (f a = g a) => path (\lam i => (p @ i) a)
+
+    \func leftInverse (x : Two) : (Eq->Two (Two->Eq x) = x) \elim x
+      | zero => idp
+      | one => runUnivalentTwo->Two
+      \where {
+        \func unwrapUnivalence : (univalence.f univalent:Two=Two = {Equiv {Two} {Two}} univalent:Eq_Two_Two) =>
+          Retraction.f_sec {univalence} univalent:Eq_Two_Two
+
+        \func runUnivalentTwo->Two : (Map.f {univalence.f univalent:Two=Two} zero = one) =>
+          \let | p : Map.f {univalence.f univalent:Two=Two} = nontrivial:Two->Two
+          => pmap {Equiv {Two} {Two}} {Two -> Two} (\lam a => Map.f {a}) unwrapUnivalence
+          \in happly (Map.f {univalence.f univalent:Two=Two}) (nontrivial:Two->Two) p zero
+      }
+
+    \func rightInverse (two=two : Two = Two) : (Two->Eq (Eq->Two two=two) = two=two) =>
+      adHocRightInverse two=two (Eq->Two two=two) idp
+
+    \func adHocRightInverse (two=two : Two = Two) (t : Two) (index : Eq->Two two=two = t) : (Two->Eq t = two=two) \elim t
+      | zero => inv (zero:caseAnalysis two=two index)
+      | one => inv (one:caseAnalysis two=two index)
+
+    \func one:caseAnalysis (two=two : Two = Two) (index : Eq->Two two=two = one) : (two=two = univalent:Two=Two) =>
+      one:get-univalence two=two (Equiv.equals (one:functionMatch two=two index))
+
+    \func one:get-univalence (two=two : Two = Two) (q : univalence.f two=two = {Equiv {Two} {Two}} univalent:Eq_Two_Two) : (two=two = univalent:Two=Two) =>
+      (inv (univalence.ret_f two=two)) <* pmap (univalence.sec) q
+
+    \func one:functionMatch (two=two : Two = Two) (q : Eq->Two two=two = one) : (Map.f {univalence.f two=two} = nontrivial:Two->Two) =>
+      funExt (\lam _ => Two) (Map.f {univalence.f two=two}) nontrivial:Two->Two (one:functionGeneration two=two q)
+
+    \func one:functionGeneration (two=two : Two = Two) (q : Eq->Two two=two = one) (x : Two) : (Map.f {univalence.f two=two} x = nontrivial:Two->Two x) \elim x
+      | zero => q
+      | one => one:otherCase two=two q (Map.f {univalence.f two=two}) idp (Map.f {univalence.f two=two} one) idp
+
+    \func one:otherCase (two=two : Two = Two) (q : Eq->Two two=two = one) (f : Two -> Two) (eq : Map.f {univalence.f two=two} = f) (v : Two) (vp : v = f one): (v = zero) \elim v
+      | zero => idp
+      | one => \let | fz=o : f zero = one => (inv (happly (Map.f {univalence.f two=two}) f eq zero)) *> q
+                    | fo=z : f one = one => inv vp
+                    | fcontr : hasContrFibers f => transport (\lam a => hasContrFibers a) eq (Equiv=>contrFibers (univalence.f two=two))
+                    | onecontr : Contr (Fib f one) => fcontr one
+                    | fibz : Fib f one => Fib.make f zero fz=o
+                    | fibo : Fib f one => Fib.make f one fo=z
+                    | f=f : fibz = fibo => inv (onecontr.contraction fibz) *> (onecontr.contraction fibo)
+                    | inject : zero = one => transport (\lam sig => zero = sig.1) f=f idp
+               \in inv inject
+
+    \func zero:get-univalence {A : \Type} (two=two : A = A) (q : univalence.f two=two = {Equiv {A} {A}} idEquiv) : (two=two = idp) =>
+      (inv (univalence.ret_f two=two)) *> pmap (univalence.sec) q *> (univalence.ret_f idp)
+
+    \func zero:caseAnalysis (two=two : Two = Two) (q : Eq->Two two=two = zero) : (two=two = idp) =>
+      zero:get-univalence two=two (Equiv.equals (zero:functionMatch two=two q))
+
+    \func zero:functionMatch (two=two : Two = Two) (q : Eq->Two two=two = zero) : (Map.f {univalence.f two=two} = id) =>
+      funExt (\lam _ => Two) (Map.f {univalence.f two=two}) id (zero:functionGeneration two=two q)
+
+    \func zero:functionGeneration (two=two : Two = Two) (q : Eq->Two two=two = zero) (x : Two) : (Map.f {univalence.f two=two} x = x) \elim x
+      | zero => q
+      | one => zero:otherCase two=two q (Map.f {univalence.f two=two}) idp (Map.f {univalence.f two=two} one) idp
+
+    \func zero:otherCase (two=two : Two = Two) (q : Eq->Two two=two = zero) (f : Two -> Two) (eq : Map.f {univalence.f two=two} = f) (v : Two) (vp : v = f one): (v = one) \elim v
+      | zero => \let | fz=z : f zero = zero => (inv (happly (Map.f {univalence.f two=two}) f eq zero)) *> q
+                     | fo=z : f one = zero => inv vp
+                     | fcontr : hasContrFibers f => transport (\lam a => hasContrFibers a) eq (Equiv=>contrFibers (univalence.f two=two))
+                     | zerocontr : Contr (Fib f zero) => fcontr zero
+                     | fibz : Fib f zero => Fib.make f zero fz=z
+                     | fibo : Fib f zero => Fib.make f one fo=z
+                     | f=f : fibz = fibo => inv (zerocontr.contraction fibz) *> (zerocontr.contraction fibo)
+                     | inject : zero = one => transport (\lam sig => zero = sig.1) f=f idp
+                \in inject
+      | one => idp
+  }

@@ -1,0 +1,58 @@
+\import Equiv
+\open Equiv
+\import Paths
+\import HLevel
+\import Equiv.Univalence
+
+\func stripSigmas {A : \Type -> \Type}
+                  (s q : \Sigma (a : \Type) (A a))
+                  (s2-contr : Contr (A s.1))
+                  (q2-contr : Contr (A q.1))
+  : (s = q) = (s.1 = q.1) => univalence.sec (stripSigmasEquiv {A} s q s2-contr q2-contr)
+  \where {
+    \func stripSigmasEquiv {A : \Type -> \Type}
+                           (s q : \Sigma (a : \Type) (A a))
+                           (s2-contr : Contr (A s.1))
+                           (q2-contr : Contr (A q.1))
+      : Equiv {s = q} {s.1 = q.1} =>
+      \new QEquiv (proj-1 {A} s q)
+                  (\lam s1=q1 => SigmaExt A s q s1=q1 ((inv (q2-contr.contraction (transport A s1=q1 s.2))) *> q2-contr.contraction q.2))
+                  (\lam v => inv (proveEqInverse {A} s q s2-contr q2-contr v))
+                  (\lam s1=q1 => idp)
+
+    \func proj-1 {A : \Type -> \Type}
+                 (s q : \Sigma (a : \Type) (A a)) => (\lam (s=q : s = q) => pmap (\lam x => x.1) s=q)
+
+    \func proveEqInverse {A : \Type -> \Type}
+                         (s q : \Sigma (a : \Type) (A a))
+                         (s2-contr : Contr (A s.1))
+                         (q2-contr : Contr (A q.1))
+                         (s=q : s = q)
+      : (s=q = (SigmaExt A s q (proj-1 {A} s q s=q) ((inv (q2-contr.contraction (transport A (proj-1 {A} s q s=q) s.2))) *> q2-contr.contraction q.2))) =>
+      \let | s1=q1 : s.1 = q.1 => proj-1 {A} s q s=q
+           | s2=q2 : transport A s1=q1 s.2 = q.2 => ((inv (q2-contr.contraction (transport A (proj-1 {A} s q s=q) s.2))) *> q2-contr.contraction q.2)
+           | result : s=q = SigmaExt A s q s1=q1 s2=q2 => detailedProofOfSigmaEquivalence {A} s q s=q s2-contr q2-contr s2=q2
+      \in result
+
+    \func detailedProofOfSigmaEquivalence {A : \Type -> \Type}
+                                          (s q : \Sigma (a : \Type) (A a))
+                                          (s=q : s = q)
+                                          (s2-contr : Contr (A s.1))
+                                          (q2-contr : Contr (A q.1))
+                                          (transp-s2 : transport A (proj-1 {A} s q s=q) s.2 = q.2)
+      : (s=q = SigmaExt A s q (proj-1 {A} s q s=q) transp-s2) =>
+      \let | sigmaContractible (sig : \Sigma (a : \Type) (A a)) (s=sig : s = sig) : Contr (A sig.1) => transport (\lam e => Contr (A e.1)) s=sig s2-contr
+           | equiv-2 (sig : \Sigma (a : \Type) (A a)) (s=sig : s = sig) : transport A (proj-1 {A} s sig s=sig) s.2 = sig.2
+           => (inv (Contr.contraction {sigmaContractible sig s=sig} (transport A (proj-1 {A} s sig s=sig) s.2))) *>(Contr.contraction {sigmaContractible sig s=sig} (sig.2))
+           | s2IsContr : Contr (s.2 = s.2) => isProp=>HLevel_-2+1 (A s.1) (isContr=>isProp s2-contr) (s.2) (s.2)
+           | s2=s2=idp : equiv-2 s idp = idp => isContr=>isProp s2IsContr (equiv-2 s idp) idp
+           | induction-base : idp = SigmaExt A s s (proj-1 {A} s s idp) (equiv-2 s idp)
+           => transport (\lam refl => idp = SigmaExt A s s (proj-1 {A} s s idp) refl) (inv s2=s2=idp) idp
+           | left-q2 : A q.1 => transport A (proj-1 {A} s q s=q) s.2
+           | q2IsContr : Contr (left-q2 = q.2) => isProp=>HLevel_-2+1 (A q.1) (isContr=>isProp q2-contr) left-q2 q.2
+           | transp-to-u : (equiv-2 q s=q) = {left-q2 = q.2} transp-s2 => isContr=>isProp q2IsContr (equiv-2 q s=q) transp-s2
+           | sigma-by-parts : (s=q = SigmaExt A s q (proj-1 {A} s q s=q) (equiv-2 q s=q)) => Jl (\lam (sig : \Sigma (a : \Type) (A a)) (patv : s = sig)
+           => patv = SigmaExt A s sig (proj-1 {A} s sig patv) (equiv-2 sig patv)) induction-base s=q
+           | result : (s=q = SigmaExt A s q (proj-1 {A} s q s=q) transp-s2) => transport (\lam kek => s=q = SigmaExt A s q (proj-1 {A} s q s=q) kek) transp-to-u sigma-by-parts
+      \in result
+  }
