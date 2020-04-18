@@ -10,9 +10,9 @@
 
 -- | This module shows conflict of the univalence axiom and the axiom of choice in homotopy 1-types
 \func AC-cartesian : \Type =>
-  \Pi (X : \Type 2 2) (Y : X -> \Type 3 2) -> Equiv {\Pi (x : X) -> TruncP (Y x)} {TruncP (\Pi (x : X) -> Y x)}
+  \Pi (X : \Type) (Y : X -> \Type) -> Equiv {\Pi (x : X) -> TruncP (Y x)} {TruncP (\Pi (x : X) -> Y x)}
 
-\func AC-contradiction (axiomOfChoice : (AC-cartesian : \Type 3 2)) : Empty => unwrap-bottom axiomOfChoice
+\func AC-contradiction (axiomOfChoice : AC-cartesian) : Empty => unwrap-bottom axiomOfChoice
   \where {
     \func X : \Type => \Sigma (A : \Type 1 0) (TruncP (Two = {\Set1} A))
 
